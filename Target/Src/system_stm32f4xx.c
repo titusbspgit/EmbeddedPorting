@@ -6,7 +6,7 @@
   */
 #include "stm32f4xx.h"
 #if !defined  (HSE_VALUE) 
-  #define HSE_VALUE    ((uint32_t)25000000)
+  #define HSE_VALUE    ((uint32_t)8000000) /* Match RCC config: 8 MHz HSE */
 #endif
 #if !defined  (HSI_VALUE)
   #define HSI_VALUE    ((uint32_t)16000000)
