@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file      sysmem.c
- * @brief     System memory calls
+ * @brief     STM32CubeIDE System Memory calls file
  ******************************************************************************
  */
 #include <errno.h>

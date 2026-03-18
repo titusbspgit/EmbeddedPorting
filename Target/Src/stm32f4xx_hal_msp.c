@@ -2,7 +2,8 @@
 /**
   ******************************************************************************
   * @file         stm32f4xx_hal_msp.c
-  * @brief        MSP Initialization and De-Initialization.
+  * @brief        This file provides code for the MSP Initialization
+  *               and De-Initialization codes.
   ******************************************************************************
   */
 /* USER CODE END Header */

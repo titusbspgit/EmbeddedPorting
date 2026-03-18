@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file      syscalls.c
- * @brief     Minimal system calls
+ * @brief     STM32CubeIDE Minimal System calls file
  ******************************************************************************
  */
 #include <sys/stat.h>

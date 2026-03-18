@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file      startup_stm32f429xx.s
-  * @brief     STM32F429xx Devices vector table (minimal set used).
+  * @brief     STM32F429xx Devices vector table for GCC based toolchains.
   ******************************************************************************
   */
   .syntax unified
