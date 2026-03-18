@@ -1,14 +1,51 @@
 #include "TSL25911.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "semphr.h"
-#include <stdlib.h>
-extern I2C_HandleTypeDef hi2c1;
-typedef struct LightNode { float light; struct LightNode *next; } LightNode;
-static LightNode *LightControlList=NULL; static float latestLight=0.0f; static SemaphoreHandle_t lightMutex;
-float Light_GetLatest(void){ float v; if(lightMutex!=NULL){ xSemaphoreTake(lightMutex,portMAX_DELAY);} v=latestLight; if(lightMutex!=NULL){ (void)xSemaphoreGive(lightMutex);} return v; }
-void LightMonitorTask(void *params)
-{ (void)params; lightMutex=xSemaphoreCreateMutex(); const TickType_t delay=pdMS_TO_TICKS(1000U); float buffer[5]={0}; int idx=0; for(;;){ uint8_t data[2]={0};
-  (void)HAL_I2C_Mem_Read(&hi2c1,(0x29U<<1),0x14U,I2C_MEMADD_SIZE_8BIT,data,2U,100U); uint16_t rawLux=(uint16_t)((uint16_t)data[1]<<8)|data[0]; float lux=(float)rawLux; buffer[idx++]=lux; if(idx>=5){ idx=0; float sum=0.0f; for(int i=0;i<5;i++){sum+=buffer[i];}
-  float avg=sum/5.0f; LightNode *node=(LightNode*)pvPortMalloc(sizeof(LightNode)); if(node!=NULL){ node->light=avg; node->next=LightControlList; LightControlList=node; } if(lightMutex!=NULL){ xSemaphoreTake(lightMutex,portMAX_DELAY);} latestLight=avg; if(lightMutex!=NULL){ (void)xSemaphoreGive(lightMutex);} }
-  vTaskDelay(delay);} }
+
+#define TSL2591_ADDR (0x29U << 1)
+#define CMD 0xA0U
+#define ENABLE 0x00U
+#define CONTROL 0x01U
+#define CHAN0_LOW 0x14U
+#define CHAN0_HIGH 0x15U
+
+static I2C_HandleTypeDef *s_hi2c = NULL;
+static float s_buf[5] = {0};
+static uint8_t s_idx = 0U;
+static float s_latest_avg = 0.0f;
+
+static HAL_StatusTypeDef tsl2591_read_lux(float *lux)
+{
+  /* Minimalistic read: power on and read channel 0 low/high, convert roughly */
+  uint8_t data[2];
+  data[0] = CMD | ENABLE; data[1] = 0x03U; /* PON | AEN */
+  if (HAL_I2C_Master_Transmit(s_hi2c, TSL2591_ADDR, data, 2U, 20U) != HAL_OK) { return HAL_ERROR; }
+  HAL_Delay(110U); /* integration time default */
+  uint8_t reg = CMD | CHAN0_LOW;
+  if (HAL_I2C_Master_Transmit(s_hi2c, TSL2591_ADDR, &reg, 1U, 20U) != HAL_OK) { return HAL_ERROR; }
+  uint8_t rx[2] = {0};
+  if (HAL_I2C_Master_Receive(s_hi2c, TSL2591_ADDR, rx, 2U, 20U) != HAL_OK) { return HAL_ERROR; }
+  uint16_t ch0 = (uint16_t)(rx[0] | ((uint16_t)rx[1] << 8));
+  /* Very rough conversion */
+  *lux = (float)ch0 * 1.0f;
+  return HAL_OK;
+}
+
+void LIGHT_TSL25911_Init(I2C_HandleTypeDef *hi2c)
+{
+  s_hi2c = hi2c;
+}
+
+void LIGHT_TaskStep(void)
+{
+  if (s_hi2c == NULL) { return; }
+  float lux = s_latest_avg;
+  (void)tsl2591_read_lux(&lux);
+  s_buf[s_idx] = lux;
+  s_idx = (uint8_t)((s_idx + 1U) % 5U);
+  float sum = 0.0f; for (uint8_t i = 0U; i < 5U; ++i) { sum += s_buf[i]; }
+  s_latest_avg = sum / 5.0f;
+}
+
+float LIGHT_GetLatestAvg(void)
+{
+  return s_latest_avg;
+}

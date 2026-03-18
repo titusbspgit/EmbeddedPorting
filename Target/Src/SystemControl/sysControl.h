@@ -1,5 +1,13 @@
-#ifndef SYS_CONTROL_H
-#define SYS_CONTROL_H
-#include "stm32f4xx_hal.h"
-void SystemControlTask(void *params);
-#endif
+#ifndef SYSCTRL_H
+#define SYSCTRL_H
+
+#include <stdint.h>
+#include <stdbool.h>
+
+void SYSCTRL_Init(void);
+void SYSCTRL_Update(void);
+
+/* Violation logging hook */
+void SYSCTRL_LogViolation(float t, float h, float l, float p);
+
+#endif /* SYSCTRL_H */

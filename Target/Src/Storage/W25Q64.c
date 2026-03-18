@@ -1,67 +1,78 @@
 #include "W25Q64.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include <string.h>
+#include "main.h"
 #include <stdio.h>
-#include <stdbool.h>
+#include <string.h>
 
-extern SPI_HandleTypeDef hspi1;
+#define CMD_READ_ID   0x9FU
+#define CMD_WREN      0x06U
+#define CMD_PP        0x02U
+#define CMD_READ      0x03U
 
-float Temperature_GetLatest(void);
-float Humidity_GetLatest(void);
-float Light_GetLatest(void);
-float Pressure_GetLatest(void);
+static uint32_t g_total_bytes = 8UL * 1024UL * 1024UL; /* default 64Mbit */
+static uint32_t g_write_ptr = 0U;
 
-/* Flash CS on PA4 per dst mapping */
-#define FLASH_CS_Port GPIOA
-#define FLASH_CS_Pin  GPIO_PIN_4
-static inline void FLASH_CS_L(void){ HAL_GPIO_WritePin(FLASH_CS_Port, FLASH_CS_Pin, GPIO_PIN_RESET); }
-static inline void FLASH_CS_H(void){ HAL_GPIO_WritePin(FLASH_CS_Port, FLASH_CS_Pin, GPIO_PIN_SET); }
+static void cs_low(void)  { HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET); }
+static void cs_high(void) { HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET); }
 
-static void flash_write_enable(void)
+static void spi_tx(const uint8_t *buf, uint16_t len)
 {
-    uint8_t cmd = 0x06U;
-    FLASH_CS_L();
-    (void)HAL_SPI_Transmit(&hspi1, &cmd, 1U, 100U);
-    FLASH_CS_H();
+  (void)HAL_SPI_Transmit(&hspi1, (uint8_t*)buf, len, 100U);
 }
 
-static void flash_page_program(uint32_t addr, const uint8_t *data, uint16_t len)
+static void spi_rx(uint8_t *buf, uint16_t len)
 {
-    uint8_t hdr[4] = {0x02U, (uint8_t)(addr>>16), (uint8_t)(addr>>8), (uint8_t)(addr)};
-    FLASH_CS_L();
-    (void)HAL_SPI_Transmit(&hspi1, hdr, 4U, 100U);
-    (void)HAL_SPI_Transmit(&hspi1, (uint8_t*)data, len, 1000U);
-    FLASH_CS_H();
+  (void)HAL_SPI_Receive(&hspi1, buf, len, 100U);
 }
 
-static bool in_green(float t,float h,float p,float l){
-    return (t>=10.0f && t<=20.0f && h>=30.0f && h<=40.0f && p>=100.0f && p<=200.0f && l>=23000.0f && l<=32000.0f);
-}
-static bool in_yellow(float t,float h,float p,float l){
-    return (t>=21.0f && t<=30.0f && h>=41.0f && h<=50.0f && p>=110.0f && p<=120.0f && l>=32000.0f && l<=49000.0f);
-}
-static bool in_red(float t,float h,float p,float l){
-    return (t>=51.0f && t<=60.0f && h>=51.0f && h<=60.0f && p>=121.0f && p<=130.0f && l>=50000.0f && l<=88000.0f);
-}
-
-void StorageTask(void *params)
+static void write_enable(void)
 {
-    (void)params;
-    for(;;){
-        float t = Temperature_GetLatest();
-        float h = Humidity_GetLatest();
-        float l = Light_GetLatest();
-        float p = Pressure_GetLatest();
+  uint8_t cmd = CMD_WREN; cs_low(); spi_tx(&cmd, 1U); cs_high();
+}
 
-        bool safe = in_green(t,h,p,l) || in_yellow(t,h,p,l) || in_red(t,h,p,l);
-        if (!safe){
-            char json[160];
-            (void)snprintf(json, sizeof(json),
-                "{\"temperature\":%.2f,\"humidity\":%.2f,\"light\":%.0f,\"pressure\":%.2f}", t,h,l,p);
-            flash_write_enable();
-            flash_page_program(0x000000U, (const uint8_t*)json, (uint16_t)strlen(json));
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000U));
-    }
+void W25_ReadJEDEC(uint8_t *mid, uint8_t *memtype, uint8_t *capacity)
+{
+  uint8_t cmd = CMD_READ_ID;
+  uint8_t id[3] = {0};
+  cs_low(); spi_tx(&cmd, 1U); spi_rx(id, 3U); cs_high();
+  if (mid) { *mid = id[0]; }
+  if (memtype) { *memtype = id[1]; }
+  if (capacity) { *capacity = id[2]; }
+  /* Capacity decode: 0x17 -> 64Mbit (8MB), 0x18 -> 128Mbit (16MB) */
+  if (id[2] == 0x18U) { g_total_bytes = 16UL * 1024UL * 1024UL; } else { g_total_bytes = 8UL * 1024UL * 1024UL; }
+}
+
+uint32_t W25_TotalSizeBytes(void)
+{
+  return g_total_bytes;
+}
+
+void W25_Init(void)
+{
+  uint8_t m=0, t=0, c=0; W25_ReadJEDEC(&m, &t, &c);
+  (void)m; (void)t; (void)c;
+  g_write_ptr = 0U;
+}
+
+static void page_program(uint32_t addr, const uint8_t *data, uint16_t len)
+{
+  uint8_t cmd[4];
+  cmd[0] = CMD_PP;
+  cmd[1] = (uint8_t)(addr >> 16);
+  cmd[2] = (uint8_t)(addr >> 8);
+  cmd[3] = (uint8_t)(addr);
+  write_enable();
+  cs_low(); spi_tx(cmd, 4U); spi_tx(data, len); cs_high();
+  HAL_Delay(3U); /* wait tPP */
+}
+
+int W25_LogJSON(float t, float h, float l, float p)
+{
+  char line[96];
+  int n = snprintf(line, sizeof line, "{ \"temperature\": %.2f, \"humidity\": %.2f, \"light\": %.2f, \"pressure\": %.2f }\n", t, h, l, p);
+  if (n <= 0) { return -1; }
+  if ((uint32_t)n > g_total_bytes) { return -2; }
+  if (g_write_ptr + (uint32_t)n >= g_total_bytes) { g_write_ptr = 0U; }
+  page_program(g_write_ptr, (const uint8_t*)line, (uint16_t)n);
+  g_write_ptr += (uint32_t)n;
+  return 0;
 }

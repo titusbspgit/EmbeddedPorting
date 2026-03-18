@@ -1,5 +1,10 @@
 #ifndef WDG_H
 #define WDG_H
-#include "stm32f4xx_hal.h"
-void WatchdogTask(void *params);
-#endif
+
+#include <stdint.h>
+
+void WDG_Init(void);
+void WDG_Kick(void);
+void WDG_SetReload5s(void);
+
+#endif /* WDG_H */
