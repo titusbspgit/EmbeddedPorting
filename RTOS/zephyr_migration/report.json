@@ -1,0 +1,53 @@
+{
+  "source_repo": "https://github.com/Varsh3092/EmbMgrRtos",
+  "source_branch": "main",
+  "freertos_config": {
+    "tick_hz": 1000,
+    "max_priorities": 7,
+    "heap_total": 15360,
+    "static_alloc": true,
+    "newlib_reentrant": "unspecified"
+  },
+  "tasks_detected": [
+    "TemperatureMonitorTask",
+    "HumidityMonitorTask",
+    "LightMonitorTask",
+    "PressureMonitorTask",
+    "StorageTask",
+    "SystemControlTask",
+    "WatchdogTask"
+  ],
+  "drivers_detected": [
+    "I2C1",
+    "SPI1",
+    "TIM3",
+    "GPIO",
+    "W25Q64 (SPI NOR)"
+  ],
+  "zephyr_target": {
+    "version": "4.2.x",
+    "sdk": "0.17.2",
+    "board": "stm32f4_disco"
+  },
+  "mappings": {
+    "tasks_to_threads": true,
+    "queues_to_msgq": true,
+    "semaphores_to_k_sem": "N/A (mutex used)",
+    "mutex_to_k_mutex": true,
+    "timers_to_k_timer": true,
+    "fromISR_removed": true
+  },
+  "modules_generated": [
+    "sensors (sht3x/bme280/tsl2591-stub)",
+    "control (thresholds/LEDs/fault blink)",
+    "storage (LittleFS JSON append)",
+    "watchdog (iwdg)",
+    "misc (delays/irq/reboot)",
+    "avg_list (moving average)"
+  ],
+  "known_mismatches": [
+    "Source MCU STM32F401 vs target board STM32F407G-DISC1",
+    "TSL25911 not in mainline Zephyr (stub provided)",
+    "SPI NOR capacity defaulted to 8 MiB; adjust per hardware"
+  ]
+}

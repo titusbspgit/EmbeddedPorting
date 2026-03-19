@@ -1,0 +1,56 @@
+&i2c1 {
+	status = "okay";
+	pinctrl-0 = <&i2c1_scl_pb8 &i2c1_sda_pb9>;
+	pinctrl-names = "default";
+};
+
+&spi1 {
+	status = "okay";
+	pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
+	pinctrl-names = "default";
+
+	w25q64: w25q64@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <24000000>;
+		jedec-id = [ ef 40 17 ]; /* Winbond W25Q64 */
+		size = <0x800000>;      /* 8 MiB (adjust if needed) */
+		status = "okay";
+		cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			log_partition: partition@0 {
+				label = "log";
+				reg = <0x000000 0x0040000>; /* 256 KiB */
+			};
+
+			data_partition: partition@40000 {
+				label = "data";
+				reg = <0x0040000 0x03C0000>;
+			};
+		};
+	};
+};
+
+/ {
+	aliases {
+		/* Map human-friendly names; board also provides led0..led3 */
+		led-green = &ld4;   /* PD12 */
+		led-orange = &ld3;  /* PD13 */
+		led-red = &ld5;     /* PD14 */
+		led-blue = &ld6;    /* PD15 */
+	};
+
+	pa9_reset: pa9_reset {
+		gpios = <&gpioa 9 GPIO_ACTIVE_HIGH>;
+		label = "pa9_reset";
+	};
+};
+
+&iwdg {
+	status = "okay";
+};
