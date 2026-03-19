@@ -1,0 +1,27 @@
+name: zephyr_migration_bundle
+
+on:
+  push:
+    branches: [ feature/zephyr-migration ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Prepare bundle
+        run: |
+          cd RTOS
+          zip -r zephyr_migration_bundle.zip zephyr_migration
+          sha256sum zephyr_migration/README.md || true
+          sha256sum zephyr_migration_bundle.zip | tee zephyr_migration_bundle.sha256
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zephyr_migration_artifacts
+          path: |
+            RTOS/zephyr_migration_bundle.zip
+            RTOS/zephyr_migration_bundle.sha256
