@@ -7,6 +7,7 @@
 #define CMD_WREN      0x06U
 #define CMD_PP        0x02U
 #define CMD_READ      0x03U
+#define CMD_RDSR      0x05U
 
 static uint32_t g_total_bytes = 8UL * 1024UL * 1024UL; /* default 64Mbit */
 static uint32_t g_write_ptr = 0U;
@@ -27,6 +28,14 @@ static void spi_rx(uint8_t *buf, uint16_t len)
 static void write_enable(void)
 {
   uint8_t cmd = CMD_WREN; cs_low(); spi_tx(&cmd, 1U); cs_high();
+}
+
+static void wait_wip_clear(void)
+{
+  uint8_t cmd = CMD_RDSR; uint8_t sr = 0x01U;
+  do {
+    cs_low(); spi_tx(&cmd, 1U); spi_rx(&sr, 1U); cs_high();
+  } while ((sr & 0x01U) != 0U);
 }
 
 void W25_ReadJEDEC(uint8_t *mid, uint8_t *memtype, uint8_t *capacity)
@@ -62,7 +71,7 @@ static void page_program(uint32_t addr, const uint8_t *data, uint16_t len)
   cmd[3] = (uint8_t)(addr);
   write_enable();
   cs_low(); spi_tx(cmd, 4U); spi_tx(data, len); cs_high();
-  HAL_Delay(3U); /* wait tPP */
+  wait_wip_clear();
 }
 
 int W25_LogJSON(float t, float h, float l, float p)

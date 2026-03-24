@@ -63,18 +63,8 @@ Infinite_Loop:
 .type  g_pfnVectors, %object
 .size  g_pfnVectors, .-g_pfnVectors
 
-.extern NMI_Handler
-.extern HardFault_Handler
-.extern MemManage_Handler
-.extern BusFault_Handler
-.extern UsageFault_Handler
-.extern SVC_Handler
-.extern DebugMon_Handler
-.extern PendSV_Handler
-.extern SysTick_Handler
-.extern TIM3_IRQHandler
-
-.g_pfnVectors:
+/* Vector table */
+g_pfnVectors:
   .word  _estack
   .word  Reset_Handler
   .word  NMI_Handler
@@ -88,7 +78,7 @@ Infinite_Loop:
   .word  0
   .word  PendSV_Handler
   .word  SysTick_Handler
-  /* External interrupts (subset; rest default) */
+  /* External interrupts (subset; other IRQs weakly aliased) */
   .word  WWDG_IRQHandler
   .word  PVD_IRQHandler
   .word  TAMP_STAMP_IRQHandler
@@ -108,10 +98,6 @@ Infinite_Loop:
   .word  DMA1_Stream5_IRQHandler
   .word  DMA1_Stream6_IRQHandler
   .word  ADC_IRQHandler
-  .word  CAN1_TX_IRQHandler
-  .word  CAN1_RX0_IRQHandler
-  .word  CAN1_RX1_IRQHandler
-  .word  CAN1_SCE_IRQHandler
   .word  EXTI9_5_IRQHandler
   .word  TIM1_BRK_TIM9_IRQHandler
   .word  TIM1_UP_TIM10_IRQHandler
@@ -128,34 +114,18 @@ Infinite_Loop:
   .word  SPI2_IRQHandler
   .word  USART1_IRQHandler
   .word  USART2_IRQHandler
-  .word  USART3_IRQHandler
   .word  EXTI15_10_IRQHandler
   .word  RTC_Alarm_IRQHandler
   .word  OTG_FS_WKUP_IRQHandler
-  .word  TIM8_BRK_TIM12_IRQHandler
-  .word  TIM8_UP_TIM13_IRQHandler
-  .word  TIM8_TRG_COM_TIM14_IRQHandler
-  .word  TIM8_CC_IRQHandler
   .word  DMA1_Stream7_IRQHandler
-  .word  FSMC_IRQHandler
   .word  SDIO_IRQHandler
   .word  TIM5_IRQHandler
   .word  SPI3_IRQHandler
-  .word  UART4_IRQHandler
-  .word  UART5_IRQHandler
-  .word  TIM6_DAC_IRQHandler
-  .word  TIM7_IRQHandler
   .word  DMA2_Stream0_IRQHandler
   .word  DMA2_Stream1_IRQHandler
   .word  DMA2_Stream2_IRQHandler
   .word  DMA2_Stream3_IRQHandler
   .word  DMA2_Stream4_IRQHandler
-  .word  ETH_IRQHandler
-  .word  ETH_WKUP_IRQHandler
-  .word  CAN2_TX_IRQHandler
-  .word  CAN2_RX0_IRQHandler
-  .word  CAN2_RX1_IRQHandler
-  .word  CAN2_SCE_IRQHandler
   .word  OTG_FS_IRQHandler
   .word  DMA2_Stream5_IRQHandler
   .word  DMA2_Stream6_IRQHandler
@@ -163,16 +133,9 @@ Infinite_Loop:
   .word  USART6_IRQHandler
   .word  I2C3_EV_IRQHandler
   .word  I2C3_ER_IRQHandler
-  .word  OTG_HS_EP1_OUT_IRQHandler
-  .word  OTG_HS_EP1_IN_IRQHandler
-  .word  OTG_HS_WKUP_IRQHandler
-  .word  OTG_HS_IRQHandler
-  .word  DCMI_IRQHandler
-  .word  CRYP_IRQHandler
-  .word  HASH_RNG_IRQHandler
   .word  FPU_IRQHandler
 
-/* Weak aliases to Default_Handler for unimplemented ISRs */
+/* Weak aliases */
 .macro WEAK handler
   .weak \handler
   .set  \handler, Default_Handler
@@ -189,5 +152,56 @@ WEAK(PendSV_Handler)
 WEAK(SysTick_Handler)
 WEAK(WWDG_IRQHandler)
 WEAK(PVD_IRQHandler)
-/* ... other IRQs weak as needed ... */
+WEAK(TAMP_STAMP_IRQHandler)
+WEAK(RTC_WKUP_IRQHandler)
+WEAK(FLASH_IRQHandler)
+WEAK(RCC_IRQHandler)
+WEAK(EXTI0_IRQHandler)
+WEAK(EXTI1_IRQHandler)
+WEAK(EXTI2_IRQHandler)
+WEAK(EXTI3_IRQHandler)
+WEAK(EXTI4_IRQHandler)
+WEAK(DMA1_Stream0_IRQHandler)
+WEAK(DMA1_Stream1_IRQHandler)
+WEAK(DMA1_Stream2_IRQHandler)
+WEAK(DMA1_Stream3_IRQHandler)
+WEAK(DMA1_Stream4_IRQHandler)
+WEAK(DMA1_Stream5_IRQHandler)
+WEAK(DMA1_Stream6_IRQHandler)
+WEAK(ADC_IRQHandler)
+WEAK(EXTI9_5_IRQHandler)
+WEAK(TIM1_BRK_TIM9_IRQHandler)
+WEAK(TIM1_UP_TIM10_IRQHandler)
+WEAK(TIM1_TRG_COM_TIM11_IRQHandler)
+WEAK(TIM1_CC_IRQHandler)
+WEAK(TIM2_IRQHandler)
 WEAK(TIM3_IRQHandler)
+WEAK(TIM4_IRQHandler)
+WEAK(I2C1_EV_IRQHandler)
+WEAK(I2C1_ER_IRQHandler)
+WEAK(I2C2_EV_IRQHandler)
+WEAK(I2C2_ER_IRQHandler)
+WEAK(SPI1_IRQHandler)
+WEAK(SPI2_IRQHandler)
+WEAK(USART1_IRQHandler)
+WEAK(USART2_IRQHandler)
+WEAK(EXTI15_10_IRQHandler)
+WEAK(RTC_Alarm_IRQHandler)
+WEAK(OTG_FS_WKUP_IRQHandler)
+WEAK(DMA1_Stream7_IRQHandler)
+WEAK(SDIO_IRQHandler)
+WEAK(TIM5_IRQHandler)
+WEAK(SPI3_IRQHandler)
+WEAK(DMA2_Stream0_IRQHandler)
+WEAK(DMA2_Stream1_IRQHandler)
+WEAK(DMA2_Stream2_IRQHandler)
+WEAK(DMA2_Stream3_IRQHandler)
+WEAK(DMA2_Stream4_IRQHandler)
+WEAK(OTG_FS_IRQHandler)
+WEAK(DMA2_Stream5_IRQHandler)
+WEAK(DMA2_Stream6_IRQHandler)
+WEAK(DMA2_Stream7_IRQHandler)
+WEAK(USART6_IRQHandler)
+WEAK(I2C3_EV_IRQHandler)
+WEAK(I2C3_ER_IRQHandler)
+WEAK(FPU_IRQHandler)
