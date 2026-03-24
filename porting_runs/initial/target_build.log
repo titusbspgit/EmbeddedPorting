@@ -1,0 +1,4 @@
+Target build log (STM32F407VG @168MHz):
+- Invoked Makefile: Target/Makefile
+- Result: Build pending in CI. Local compile not executed here.
+- Notes: Ensure HAL source files are present in include path or vendor submodule.

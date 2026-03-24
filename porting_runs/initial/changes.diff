@@ -1,0 +1,5 @@
+Changes summary (conceptual):
+- Added: Target/Startup/startup_stm32f407xx.s
+- Added: Target/stm32f407vg.ld
+- Existing Target sources configure Discovery1 pins and peripherals per dst spec.
+- Artifacts generated under porting_runs/initial/ for tracking.
