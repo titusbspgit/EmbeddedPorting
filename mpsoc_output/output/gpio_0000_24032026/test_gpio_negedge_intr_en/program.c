@@ -67,12 +67,12 @@ void test_case(void)
     printf("Starting testcase: test_gpio_negedge_intr_en\n");
 #endif
 
-    // Optionally enable IRQs
+    // Enable IRQs (GPIO0/GPIO1)
     GIC_EnableIRQ(87);
     GIC_EnableIRQ(88);
 
     // Enable system-level GPIO interrupts
-    write_reg(MIZAR_LSS_SYSREG_INTR_EN1, LSS_SYSREG_INTR_EN1_GPIOx_INTR);
+    write_reg(MIZAR_LSS_SYSREG_INTR_EN1, 0xFFFFFFFF);
 
     // Pre-drive high
     write_reg(0xA0243FFC, 0xFFFFFFFF);
