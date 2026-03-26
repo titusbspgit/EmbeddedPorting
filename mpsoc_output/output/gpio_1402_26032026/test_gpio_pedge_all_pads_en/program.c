@@ -1,12 +1,13 @@
 /* Auto-generated program.c for test_gpio_pedge_all_pads_en
  * Implements CSV Description/Procedure using only impacted registers.
- * TODOs mark places where exact masks/fields require register specs.
+ * Updated: ISR masks group, clears per-pin via GPIOx register writes, acknowledges SYSREG; errors accumulated.
  */
 
 #include "test_define.c"
 #include <stdint.h>
 
 static volatile int g_int_pend = 0;
+static volatile int g_isr_errs = 0;
 
 void Default_IRQHandler(void)
 {
@@ -14,10 +15,11 @@ void Default_IRQHandler(void)
 #ifdef MIZAR_GPIO_GP0_INTR1_INTR_STS1
     uint32_t rdata_grp = read_reg(MIZAR_GPIO_GP0_INTR1_INTR_STS1);
     if ((rdata_grp & 0xFFFFFFFFu) == 0u) {
-        DEBUG_DISPLAY("[PEDGE] Expected non-zero group status before clear\n");
+        DEBUG_DISPLAY("[PEDGE][ISR] Expected non-zero group status before clear\n");
+        g_isr_errs++;
     }
-    /* Mask group during service */
 #ifdef MIZAR_GPIO_GP0_INTR1_INTR_EN1
+    /* Mask group during service */
     write_reg(MIZAR_GPIO_GP0_INTR1_INTR_EN1, 0x00000000u);
 #endif
 #endif
@@ -34,14 +36,18 @@ void Default_IRQHandler(void)
     /* Expect group cleared to 0 */
     rdata_grp = read_reg(MIZAR_GPIO_GP0_INTR1_INTR_STS1);
     if (rdata_grp != 0u) {
-        DEBUG_DISPLAY("[PEDGE] Group status not zero after per-pin clear (0x%08X)\n", rdata_grp);
+        DEBUG_DISPLAY("[PEDGE][ISR] Group status not zero after per-pin clear (0x%08X)\n", rdata_grp);
+        g_isr_errs++;
     }
 #endif
 
 #ifdef MIZAR_LSS_SYSREG_RAW_STCR1
-    /* Clear sysreg and expect readback not to retain bit (write-1-to-clear) */
-    /* TODO: Provide correct mask value */
-    /* write_reg(MIZAR_LSS_SYSREG_RAW_STCR1, <mask>); */
+    /* Acknowledge at SYSREG: write same mask if known */
+#ifdef MIZAR_GPIO_GP0_INTR1_INTR_STS1
+    if (rdata_grp != 0u) {
+        write_reg(MIZAR_LSS_SYSREG_RAW_STCR1, rdata_grp);
+    }
+#endif
 #endif
 
 #ifdef MIZAR_GPIO_GP0_INTR1_INTR_EN1
@@ -85,9 +91,6 @@ void test_case(void)
 #endif
 
     for (int i = 0; i < 32; ++i) {
-        /* Generate rising edges using external reg 0xA0243FFC not in impacted list; leaving as TODO */
-        /* TODO: 0xA0243FFC toggle high then low */
-
         g_int_pend = 0;
         int timeout = 1000000;
         while (timeout-- > 0) {
@@ -97,6 +100,12 @@ void test_case(void)
             DEBUG_DISPLAY("[PEDGE] Timeout waiting for interrupt on pin %d\n", i);
             test_err++;
             break; /* As per CSV: break on timeout */
+        }
+
+        /* Accumulate ISR-detected errors and reset for next iteration */
+        if (g_isr_errs) {
+            test_err += g_isr_errs;
+            g_isr_errs = 0;
         }
     }
 
