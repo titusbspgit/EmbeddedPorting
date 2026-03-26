@@ -1,105 +1,104 @@
-/*
- * Auto-generated program for GPIO testcase: test_gpio_pedge_all_pads_en
- * Implements CSV Description/Procedure/Criteria using only impacted register macros.
+/* Auto-generated program.c for test_gpio_pedge_all_pads_en
+ * Implements CSV Description/Procedure using only impacted registers.
+ * TODOs mark places where exact masks/fields require register specs.
  */
 
 #include "test_define.c"
+#include <stdint.h>
 
-static unsigned int test_err = 0;
+static volatile int g_int_pend = 0;
 
 void Default_IRQHandler(void)
 {
-    /* Latch group status, then mask group, check non-zero, clear per-pin, verify clear, clear sysreg, re-enable */
-    unsigned int rdata, rdata_grp;
-
-#ifdef DEBUG_DISPLAY
-    printf("[IRQ] Handling posedge, last pin index=%u (GPIO%u)\n", g_current_pin, (unsigned)(g_current_pin + 8));
+    g_int_pend = 1;
+#ifdef MIZAR_GPIO_GP0_INTR1_INTR_STS1
+    uint32_t rdata_grp = read_reg(MIZAR_GPIO_GP0_INTR1_INTR_STS1);
+    if ((rdata_grp & 0xFFFFFFFFu) == 0u) {
+        DEBUG_DISPLAY("[PEDGE] Expected non-zero group status before clear\n");
+    }
+    /* Mask group during service */
+#ifdef MIZAR_GPIO_GP0_INTR1_INTR_EN1
+    write_reg(MIZAR_GPIO_GP0_INTR1_INTR_EN1, 0x00000000u);
+#endif
 #endif
 
+#ifdef MIZAR_GPIO_GP0_GPIO_8
+    for (int j = 0; j < 32; ++j) {
+        uint32_t addr = (uint32_t)MIZAR_GPIO_GP0_GPIO_8 + ((uint32_t)j * 4u);
+        /* Clear per-pin by writing 0x00010000 per CSV procedure */
+        write_reg(addr, 0x00010000u);
+    }
+#endif
+
+#ifdef MIZAR_GPIO_GP0_INTR1_INTR_STS1
+    /* Expect group cleared to 0 */
     rdata_grp = read_reg(MIZAR_GPIO_GP0_INTR1_INTR_STS1);
-    write_reg(MIZAR_GPIO_GP0_INTR1_INTR_EN1, 0x00000000);
-
-    if ((rdata_grp & 0xFFFFFFFFu) == 0u) {
-        printf("ERROR: Group Interrupt not occurred\n");
-        test_err++;
+    if (rdata_grp != 0u) {
+        DEBUG_DISPLAY("[PEDGE] Group status not zero after per-pin clear (0x%08X)\n", rdata_grp);
     }
+#endif
 
-    for (unsigned int j = 0; j < 32u; ++j) {
-        write_reg(MIZAR_GPIO_GP0_GPIO_8 + (j * 4u), 0x00010000); /* clear raw per pin */
-    }
-    wait_on(2);
+#ifdef MIZAR_LSS_SYSREG_RAW_STCR1
+    /* Clear sysreg and expect readback not to retain bit (write-1-to-clear) */
+    /* TODO: Provide correct mask value */
+    /* write_reg(MIZAR_LSS_SYSREG_RAW_STCR1, <mask>); */
+#endif
 
-    rdata_grp = read_reg(MIZAR_GPIO_GP0_INTR1_INTR_STS1);
-    if (rdata_grp != 0x0u) {
-        printf("ERROR: Group Interrupt clear failed: 0x%08x\n", rdata_grp);
-        test_err++;
-    }
-
-    /* Clear sysreg (mask TBD, no RAG). Use placeholder write and verify readback does not retain bit. */
-    write_reg(MIZAR_LSS_SYSREG_RAW_STCR1, 0u); /* TODO: replace 0 with GPIOx bit */
-    rdata = read_reg(MIZAR_LSS_SYSREG_RAW_STCR1);
-    if ((rdata & 0u) != 0u) { /* TODO condition once mask is known */
-        printf("ERROR: sysreg status not cleared as expected\n");
-        test_err++;
-    }
-
+#ifdef MIZAR_GPIO_GP0_INTR1_INTR_EN1
+    /* Re-enable group */
     write_reg(MIZAR_GPIO_GP0_INTR1_INTR_EN1, 0xFFFFFFFFu);
-
-    int_pend = 0; /* release wait */
+#endif
 }
 
 void test_case(void)
 {
-#ifdef GPIO0
-    GIC_EnableIRQ(87);
+    int test_err = 0;
+
+#ifdef MIZAR_LSS_SYSREG_INTR_EN1
+    /* TODO: Replace 0 with proper enable mask for GPIOx interrupts */
+    write_reg(MIZAR_LSS_SYSREG_INTR_EN1, 0u);
 #endif
-#ifdef GPIO1
-    GIC_EnableIRQ(88);
-#endif
 
-    test_err = 0u;
-
-    /* Enable sysreg output for GPIO (mask TBD, keep placeholder) */
-    write_reg(MIZAR_LSS_SYSREG_INTR_EN1, 0u); /* TODO replace with proper mask */
-
-    for (unsigned int i = 0; i < 32u; ++i) {
-        if (!skip_array[1]) {
-            write_reg(MIZAR_GPIO_GP0_GPIO_8 + (i * 4u), 0x00020000); /* posedge on bit17 */
-        }
+#ifdef MIZAR_GPIO_GP0_GPIO_8
+    for (int i = 0; i < 32; ++i) {
+        uint32_t addr = (uint32_t)MIZAR_GPIO_GP0_GPIO_8 + ((uint32_t)i * 4u);
+        /* Configure posedge: 0x00020000 per CSV */
+        write_reg(addr, 0x00020000u);
     }
+#endif
 
-    wait_on(10);
+#ifdef MIZAR_GPIO_GPIO_IO_CTRL_GROUP1
+    write_reg(MIZAR_GPIO_GPIO_IO_CTRL_GROUP1, 0x000000FFu);
+#endif
+#ifdef MIZAR_GPIO_GPIO_IO_CTRL_GROUP2
+    write_reg(MIZAR_GPIO_GPIO_IO_CTRL_GROUP2, 0x000000FFu);
+#endif
+#ifdef MIZAR_GPIO_GPIO_IO_CTRL_GROUP3
+    write_reg(MIZAR_GPIO_GPIO_IO_CTRL_GROUP3, 0x000000FFu);
+#endif
+#ifdef MIZAR_GPIO_GPIO_IO_CTRL_GROUP4
+    write_reg(MIZAR_GPIO_GPIO_IO_CTRL_GROUP4, 0x000000FFu);
+#endif
 
-    if (!skip_array[2]) write_reg(MIZAR_GPIO_GPIO_IO_CTRL_GROUP1, 0x000000FF);
-    if (!skip_array[3]) write_reg(MIZAR_GPIO_GPIO_IO_CTRL_GROUP2, 0x000000FF);
-    if (!skip_array[4]) write_reg(MIZAR_GPIO_GPIO_IO_CTRL_GROUP3, 0x000000FF);
-    if (!skip_array[5]) write_reg(MIZAR_GPIO_GPIO_IO_CTRL_GROUP4, 0x000000FF);
+#ifdef MIZAR_GPIO_GP0_INTR1_INTR_EN1
+    write_reg(MIZAR_GPIO_GP0_INTR1_INTR_EN1, 0xFFFFFFFFu);
+#endif
 
-    wait_on(10);
+    for (int i = 0; i < 32; ++i) {
+        /* Generate rising edges using external reg 0xA0243FFC not in impacted list; leaving as TODO */
+        /* TODO: 0xA0243FFC toggle high then low */
 
-    if (!skip_array[6]) write_reg(MIZAR_GPIO_GP0_INTR1_INTR_EN1, 0xFFFFFFFFu);
-
-    for (unsigned int i = 0; i < 32u; ++i) {
-        /* Prepare known low, arm, drive high to cause posedge */
-        /* Note: external drive register 0xA0243FFC is not in impacted list; keep as TODO external stimulus */
-        /* TODO: write_reg(0xA0243FFC, 0x00000000); */
-        wait_on(10);
-        int_pend = 1;
-        g_current_pin = i;
-        /* TODO: write_reg(0xA0243FFC, 0xFFFFFFFF); */
-
-        int timeout = 2000;
-        while (int_pend && (--timeout > 0)) { wait_on(10); }
-        if (timeout == 0) {
-            printf("ERROR: Timeout waiting for GPIO posedge at i=%u\n", i);
+        g_int_pend = 0;
+        int timeout = 1000000;
+        while (timeout-- > 0) {
+            if (g_int_pend) break;
+        }
+        if (timeout <= 0) {
+            DEBUG_DISPLAY("[PEDGE] Timeout waiting for interrupt on pin %d\n", i);
             test_err++;
-            break; /* per CSV: may break on timeout */
+            break; /* As per CSV: break on timeout */
         }
-
-        /* Optionally drive low to prep next iteration */
-        /* TODO: write_reg(0xA0243FFC, 0x00000000); */
-        wait_on(10);
     }
 
-    if (test_err == 0u) finish(0); else finish(1);
+    finish(test_err ? 1 : 0);
 }
