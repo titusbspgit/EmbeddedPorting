@@ -1,3 +1,4 @@
+#include <test_common.h>
 #include <gpio/gpio_def.h>
 #include <gpio/gpio_offset.h>
 #include <lss_sysreg.h>
