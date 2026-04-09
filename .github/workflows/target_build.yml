@@ -1,0 +1,49 @@
+name: Target Build (STM32F407VG)
+
+on:
+  push:
+    branches: [ feature/port-stm32f407vg-initial ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install ARM GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Fetch ST HAL and CMSIS
+        run: |
+          git clone --depth 1 https://github.com/STMicroelectronics/stm32f4xx_hal_driver.git HAL
+          git clone --depth 1 https://github.com/STMicroelectronics/cmsis_device_f4.git CMSIS-Dev
+          git clone --depth 1 https://github.com/ARM-software/CMSIS_5.git CMSIS5
+      - name: Build Target
+        run: |
+          make -f Target/Makefile HALDIR=$PWD/HAL CMSISDEV=$PWD/CMSIS-Dev CMSISINC=$PWD/CMSIS5/CMSIS/Core/Include all | tee porting_runs/initial/target_build.log
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: target-build-artifacts
+          path: |
+            EnvMonTarget.elf
+            EnvMonTarget.map
+            porting_runs/initial/target_build.log
+      - name: Summaries
+        run: |
+          echo "Environment: ubuntu-latest; gcc-arm-none-eabi version:" > porting_runs/initial/environment_summary.txt
+          arm-none-eabi-gcc --version >> porting_runs/initial/environment_summary.txt
+          echo "Warnings summary (grep -E 'warning:'):" > porting_runs/initial/warnings_summary.txt
+          grep -E "warning:" -n porting_runs/initial/target_build.log || true
+        shell: bash
+        continue-on-error: true
+      - name: Upload summaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: target-build-summaries
+          path: |
+            porting_runs/initial/environment_summary.txt
+            porting_runs/initial/warnings_summary.txt

@@ -1,0 +1,5 @@
+SystemClock: 168 MHz
+AHB: 168 MHz
+APB1: 42 MHz (TIMCLK 84 MHz)
+APB2: 84 MHz
+TIM3: PSC=83999, ARR=9999 (10s); reload to 4999 (5s) in task

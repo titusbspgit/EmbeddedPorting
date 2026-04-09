@@ -1,0 +1,5 @@
+Smoke test plan (no hardware attached in this run):
+- Build Target via CI using Target/Makefile.
+- On board, connect UART for logs (if enabled) and observe LED behavior.
+- Run sensor readouts at 1 Hz; verify averages over 5 samples.
+- Trigger out-of-range values to assert LED color changes and NOR JSON logging.

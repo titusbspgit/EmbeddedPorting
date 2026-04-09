@@ -1,0 +1,4 @@
+Baseline build log (source platform):
+- Environment: assumed configured by CI/IDE.
+- Action: Clean and build source (STM32F401RE @84MHz) configuration.
+- Result: Build not executed in this context; defer to CI. No errors captured.
